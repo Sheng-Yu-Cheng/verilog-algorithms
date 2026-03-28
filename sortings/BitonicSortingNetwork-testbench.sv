@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 /*
-run this test bench with command
+Run:
 vcs -R -full64 -sverilog BitonicSortingNetwork-testbench.sv BitonicSortingNetwork.v +access+r +vcs+fsdbon
 */
 
@@ -13,12 +13,21 @@ module tb_BitonicSortingNetwork;
     logic busy;
     logic done;
 
+    // DUT interface
     logic [7:0] cmp [7:0];
     logic [2:0] result [7:0];
 
-    integer i;
+    // local stimulus / golden
+    integer value  [7:0];
+    integer expect [7:0];
 
+    integer i, j;
+    integer total_tests;
+    integer pass_tests;
+
+    // ----------------------------
     // DUT
+    // ----------------------------
     BitonicSortingNetwork dut (
         .clk    (clk),
         .rst_n  (rst_n),
@@ -29,27 +38,37 @@ module tb_BitonicSortingNetwork;
         .result (result)
     );
 
-    // clock: 10ns period
-    initial clk = 0;
+    // ----------------------------
+    // clock
+    // ----------------------------
+    initial clk = 1'b0;
     always #5 clk = ~clk;
 
     // ----------------------------
-    // Utility tasks
+    // FSDB
     // ----------------------------
-    task print_inputs;
+    initial begin
+        $fsdbDumpfile("BitonicSortingNetwork.fsdb");
+        $fsdbDumpvars(0, tb_BitonicSortingNetwork);
+    end
+
+    // ----------------------------
+    // Utility: print
+    // ----------------------------
+    task print_values;
         begin
-            $write("[TB] cmp = ");
+            $write("[TB] values        = ");
             for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", cmp[i]);
+                $write("%0d", value[i]);
                 if (i != 7) $write(", ");
             end
             $write("\n");
         end
     endtask
 
-    task print_results;
+    task print_result_indices;
         begin
-            $write("[TB] result index order = ");
+            $write("[TB] DUT result idx = ");
             for (i = 0; i < 8; i = i + 1) begin
                 $write("%0d", result[i]);
                 if (i != 7) $write(", ");
@@ -58,16 +77,106 @@ module tb_BitonicSortingNetwork;
         end
     endtask
 
-    task apply_case(
-        input [7:0] c0, input [7:0] c1, input [7:0] c2, input [7:0] c3,
-        input [7:0] c4, input [7:0] c5, input [7:0] c6, input [7:0] c7
-    );
+    task print_expect_indices;
         begin
-            cmp[0] = c0; cmp[1] = c1; cmp[2] = c2; cmp[3] = c3;
-            cmp[4] = c4; cmp[5] = c5; cmp[6] = c6; cmp[7] = c7;
+            $write("[TB] golden idx     = ");
+            for (i = 0; i < 8; i = i + 1) begin
+                $write("%0d", expect[i]);
+                if (i != 7) $write(", ");
+            end
+            $write("\n");
         end
     endtask
 
+    task print_result_values;
+        begin
+            $write("[TB] DUT values     = ");
+            for (i = 0; i < 8; i = i + 1) begin
+                $write("%0d", value[result[i]]);
+                if (i != 7) $write(", ");
+            end
+            $write("\n");
+        end
+    endtask
+
+    task print_expect_values;
+        begin
+            $write("[TB] golden values  = ");
+            for (i = 0; i < 8; i = i + 1) begin
+                $write("%0d", value[expect[i]]);
+                if (i != 7) $write(", ");
+            end
+            $write("\n");
+        end
+    endtask
+
+    // ----------------------------
+    // Build cmp matrix from values
+    // cmp[a][b] = 1 means value[a] <= value[b]
+    // tie-break by index to make ordering deterministic
+    // ----------------------------
+    task build_cmp_from_values;
+        begin
+            for (i = 0; i < 8; i = i + 1) begin
+                for (j = 0; j < 8; j = j + 1) begin
+                    if (value[i] < value[j])
+                        cmp[i][j] = 1'b1;
+                    else if (value[i] > value[j])
+                        cmp[i][j] = 1'b0;
+                    else
+                        cmp[i][j] = (i <= j); // stable tie-break
+                end
+            end
+        end
+    endtask
+
+    // ----------------------------
+    // Build golden sorted index order
+    // ascending by value, tie-break by index
+    // ----------------------------
+    task build_golden;
+        integer tmp;
+        begin
+            for (i = 0; i < 8; i = i + 1)
+                expect[i] = i;
+
+            for (i = 0; i < 8; i = i + 1) begin
+                for (j = i + 1; j < 8; j = j + 1) begin
+                    if (value[expect[j]] < value[expect[i]]) begin
+                        tmp       = expect[i];
+                        expect[i] = expect[j];
+                        expect[j] = tmp;
+                    end
+                    else if (value[expect[j]] == value[expect[i]] &&
+                             expect[j] < expect[i]) begin
+                        tmp       = expect[i];
+                        expect[i] = expect[j];
+                        expect[j] = tmp;
+                    end
+                end
+            end
+        end
+    endtask
+
+    // ----------------------------
+    // Reset
+    // ----------------------------
+    task do_reset;
+        begin
+            rst_n = 1'b0;
+            start = 1'b0;
+            for (i = 0; i < 8; i = i + 1)
+                cmp[i] = '0;
+
+            repeat (2) @(negedge clk);
+            rst_n = 1'b1;
+            repeat (1) @(negedge clk);
+        end
+    endtask
+
+    // ----------------------------
+    // Start pulse: one cycle
+    // ----------------------------
     task start_once;
         begin
             @(negedge clk);
@@ -77,11 +186,14 @@ module tb_BitonicSortingNetwork;
         end
     endtask
 
+    // ----------------------------
+    // Wait until DUT returns idle
+    // ----------------------------
     task wait_done;
         integer cycle_count;
         begin
             cycle_count = 0;
-            while (done !== 1'b1 || busy !== 1'b0) begin
+            while ((done !== 1'b1) || (busy !== 1'b0)) begin
                 @(posedge clk);
                 cycle_count = cycle_count + 1;
                 if (cycle_count > 20) begin
@@ -89,12 +201,64 @@ module tb_BitonicSortingNetwork;
                     $finish;
                 end
             end
-            $display("[TB] done observed after %0d cycles", cycle_count);
         end
     endtask
 
     // ----------------------------
-    // Monitor
+    // Compare DUT result with golden
+    // ----------------------------
+    task check_result;
+        integer mismatch;
+        begin
+            mismatch = 0;
+            for (i = 0; i < 8; i = i + 1) begin
+                if (result[i] !== expect[i][2:0])
+                    mismatch = 1;
+            end
+
+            total_tests = total_tests + 1;
+
+            if (mismatch) begin
+                $display("[TB] FAIL");
+                print_values();
+                print_result_indices();
+                print_expect_indices();
+                print_result_values();
+                print_expect_values();
+                $display("");
+            end
+            else begin
+                pass_tests = pass_tests + 1;
+                $display("[TB] PASS");
+                print_values();
+                print_result_indices();
+                print_result_values();
+                $display("");
+            end
+        end
+    endtask
+
+    // ----------------------------
+    // One test wrapper
+    // ----------------------------
+    task run_case(
+        input integer v0, input integer v1, input integer v2, input integer v3,
+        input integer v4, input integer v5, input integer v6, input integer v7
+    );
+        begin
+            value[0] = v0; value[1] = v1; value[2] = v2; value[3] = v3;
+            value[4] = v4; value[5] = v5; value[6] = v6; value[7] = v7;
+
+            build_cmp_from_values();
+            build_golden();
+            start_once();
+            wait_done();
+            check_result();
+        end
+    endtask
+
+    // ----------------------------
+    // Optional monitor
     // ----------------------------
     initial begin
         $display("time   rst_n start busy done | result");
@@ -111,52 +275,43 @@ module tb_BitonicSortingNetwork;
     end
 
     // ----------------------------
-    // Stimulus
+    // Main stimulus
     // ----------------------------
     initial begin
-        // init
-        rst_n = 0;
-        start = 0;
-        for (i = 0; i < 8; i = i + 1)
-            cmp[i] = 0;
+        total_tests = 0;
+        pass_tests  = 0;
 
-        // reset
-        #12;
-        rst_n = 1;
+        do_reset();
 
-        // after reset, result should be 0..7
-        @(posedge clk);
-        $display("\n[TB] After reset");
-        print_results();
+        $display("\n[TB] Directed tests start\n");
 
-        // case 1
-        $display("\n[TB] CASE 1");
-        apply_case(8'd13, 8'd2, 8'd99, 8'd7, 8'd45, 8'd1, 8'd88, 8'd20);
-        print_inputs();
-        start_once();
-        wait_done();
-        print_results();
+        // distinct values
+        run_case(13, 2, 99, 7, 45, 1, 88, 20);
 
-        // case 2
-        $display("\n[TB] CASE 2");
-        apply_case(8'd8, 8'd7, 8'd6, 8'd5, 8'd4, 8'd3, 8'd2, 8'd1);
-        print_inputs();
-        start_once();
-        wait_done();
-        print_results();
+        // descending
+        run_case(8, 7, 6, 5, 4, 3, 2, 1);
 
-        // case 3
-        $display("\n[TB] CASE 3");
-        apply_case(8'd10, 8'd10, 8'd3, 8'd3, 8'd50, 8'd50, 8'd1, 8'd1);
-        print_inputs();
-        start_once();
-        wait_done();
-        print_results();
+        // ascending
+        run_case(1, 2, 3, 4, 5, 6, 7, 8);
 
-        $display("\n[TB] Simulation finished.");
+        // duplicates
+        run_case(10, 10, 3, 3, 50, 50, 1, 1);
+
+        // all equal
+        run_case(5, 5, 5, 5, 5, 5, 5, 5);
+
+        // mixed
+        run_case(42, 0, 17, 17, 99, 3, 42, 1);
+
+        $display("[TB] Summary: %0d / %0d passed", pass_tests, total_tests);
+
+        if (pass_tests == total_tests)
+            $display("[TB] ALL TESTS PASSED");
+        else
+            $display("[TB] SOME TESTS FAILED");
+
         #20;
         $finish;
     end
 
 endmodule
-
