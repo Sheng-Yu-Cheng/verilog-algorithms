@@ -18,7 +18,7 @@ module BitonicSortingNetwork (
         S_BI4_MG2
     } state_t;
     state_t state, next_state;
-    reg do_bi1; reg do_bi2; reg do_bi4;
+    reg do_bi1; reg do_bi2; reg do_bi4; reg do_reset;
     reg do_bi2_mg2; reg do_bi4_mg4; reg do_bi4_mg2;
 
     // ----------------------------- State Register -----------------------------
@@ -28,6 +28,9 @@ module BitonicSortingNetwork (
             state <= S_IDLE; 
             for (i = 0; i < 8; i++) result[i] = i;
         end else begin
+            if (do_reset) begin
+                for (i = 0; i < 8; i++) result[i] = i;            
+            end
             if (do_bi1) begin
                 {result[1], result[0]} <= (cmp[result[1]] > cmp[result[0]]) ? {result[1], result[0]} : {result[0], result[1]};
                 {result[3], result[2]} <= (cmp[result[3]] < cmp[result[2]]) ? {result[3], result[2]} : {result[2], result[3]};
@@ -88,6 +91,7 @@ module BitonicSortingNetwork (
     always @(*) begin
         busy = (state != S_IDLE);
         done = (state == S_IDLE);
+        do_reset     = 0;
         do_bi1       = 0;
         do_bi2       = 0;
         do_bi2_mg2   = 0;
@@ -95,6 +99,7 @@ module BitonicSortingNetwork (
         do_bi4_mg4   = 0;
         do_bi4_mg2   = 0;
         case (state)
+            S_IDLE:      if (start) do_reset = 1;
             S_BI1:       do_bi1 = 1;
             S_BI2:       do_bi2 = 1;
             S_BI2_MG2:   do_bi2_mg2 = 1;
@@ -103,5 +108,4 @@ module BitonicSortingNetwork (
             S_BI4_MG2:   do_bi4_mg2 = 1;
         endcase
     end
-
 endmodule
