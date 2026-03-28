@@ -19,7 +19,7 @@ module tb_BitonicSortingNetwork;
 
     // local stimulus / golden
     integer value  [7:0];
-    integer expect [7:0];
+    integer golden [7:0];
 
     integer i, j;
     integer total_tests;
@@ -77,11 +77,11 @@ module tb_BitonicSortingNetwork;
         end
     endtask
 
-    task print_expect_indices;
+    task print_golden_indices;
         begin
             $write("[TB] golden idx     = ");
             for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", expect[i]);
+                $write("%0d", golden[i]);
                 if (i != 7) $write(", ");
             end
             $write("\n");
@@ -99,11 +99,11 @@ module tb_BitonicSortingNetwork;
         end
     endtask
 
-    task print_expect_values;
+    task print_golden_values;
         begin
             $write("[TB] golden values  = ");
             for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", value[expect[i]]);
+                $write("%0d", value[golden[i]]);
                 if (i != 7) $write(", ");
             end
             $write("\n");
@@ -138,20 +138,20 @@ module tb_BitonicSortingNetwork;
         integer tmp;
         begin
             for (i = 0; i < 8; i = i + 1)
-                expect[i] = i;
+                golden[i] = i;
 
             for (i = 0; i < 8; i = i + 1) begin
                 for (j = i + 1; j < 8; j = j + 1) begin
-                    if (value[expect[j]] < value[expect[i]]) begin
-                        tmp       = expect[i];
-                        expect[i] = expect[j];
-                        expect[j] = tmp;
+                    if (value[golden[j]] < value[golden[i]]) begin
+                        tmp       = golden[i];
+                        golden[i] = golden[j];
+                        golden[j] = tmp;
                     end
-                    else if (value[expect[j]] == value[expect[i]] &&
-                             expect[j] < expect[i]) begin
-                        tmp       = expect[i];
-                        expect[i] = expect[j];
-                        expect[j] = tmp;
+                    else if (value[golden[j]] == value[golden[i]] &&
+                             golden[j] < golden[i]) begin
+                        tmp       = golden[i];
+                        golden[i] = golden[j];
+                        golden[j] = tmp;
                     end
                 end
             end
@@ -212,7 +212,7 @@ module tb_BitonicSortingNetwork;
         begin
             mismatch = 0;
             for (i = 0; i < 8; i = i + 1) begin
-                if (result[i] !== expect[i][2:0])
+                if (result[i] !== golden[i][2:0])
                     mismatch = 1;
             end
 
@@ -222,9 +222,9 @@ module tb_BitonicSortingNetwork;
                 $display("[TB] FAIL");
                 print_values();
                 print_result_indices();
-                print_expect_indices();
+                print_golden_indices();
                 print_result_values();
-                print_expect_values();
+                print_golden_values();
                 $display("");
             end
             else begin
