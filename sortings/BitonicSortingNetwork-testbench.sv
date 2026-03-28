@@ -2,7 +2,7 @@
 
 /*
 Run:
-vcs -R -full64 -sverilog BitonicSortingNetwork-testbench.sv BitonicSortingNetwork.v +access+r +vcs+fsdbon
+vcs -R -full64 -sverilog BitonicSortingNetwork_geofence_tb.sv BitonicSortingNetwork.v +access+r +vcs+fsdbon
 */
 
 module tb_BitonicSortingNetwork;
@@ -13,21 +13,23 @@ module tb_BitonicSortingNetwork;
     logic busy;
     logic done;
 
-    // DUT interface
     logic [7:0] cmp [7:0];
     logic [2:0] result [7:0];
 
-    // local stimulus / golden
-    integer value  [7:0];
+    integer i, j, t;
+
+    // generic values for full-sort testing
+    integer value [7:0];
     integer golden [7:0];
 
-    integer i, j;
+    // geofence-style angle ranks for indices 0..5
+    // indices 6,7 are dummy
+    integer rank6 [5:0];
+    integer golden6 [5:0];
+
     integer total_tests;
     integer pass_tests;
 
-    // ----------------------------
-    // DUT
-    // ----------------------------
     BitonicSortingNetwork dut (
         .clk    (clk),
         .rst_n  (rst_n),
@@ -38,83 +40,66 @@ module tb_BitonicSortingNetwork;
         .result (result)
     );
 
-    // ----------------------------
-    // clock
-    // ----------------------------
-    initial clk = 1'b0;
+    initial clk = 0;
     always #5 clk = ~clk;
 
-    // ----------------------------
-    // FSDB
-    // ----------------------------
     initial begin
-        $fsdbDumpfile("BitonicSortingNetwork.fsdb");
+        $fsdbDumpfile("BitonicSortingNetwork_geofence_tb.fsdb");
         $fsdbDumpvars(0, tb_BitonicSortingNetwork);
     end
 
     // ----------------------------
-    // Utility: print
+    // common utils
     // ----------------------------
-    task print_values;
+    task do_reset;
         begin
-            $write("[TB] values        = ");
-            for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", value[i]);
-                if (i != 7) $write(", ");
-            end
-            $write("\n");
+            rst_n  = 0;
+            start  = 0;
+            for (i = 0; i < 8; i = i + 1) cmp[i] = '0;
+            repeat (2) @(negedge clk);
+            rst_n = 1;
+            repeat (1) @(negedge clk);
         end
     endtask
 
-    task print_result_indices;
+    task pulse_start;
         begin
-            $write("[TB] DUT result idx = ");
+            @(negedge clk);
+            start = 1;
+            @(negedge clk);
+            start = 0;
+        end
+    endtask
+
+    task wait_done;
+        integer cyc;
+        begin
+            cyc = 0;
+            while (!done) begin
+                @(posedge clk);
+                cyc = cyc + 1;
+                if (cyc > 20) begin
+                    $display("[TB] ERROR: timeout waiting done");
+                    $finish;
+                end
+            end
+        end
+    endtask
+
+    task print_result;
+        begin
+            $write("[TB] result idx = ");
             for (i = 0; i < 8; i = i + 1) begin
                 $write("%0d", result[i]);
-                if (i != 7) $write(", ");
+                if (i != 7) $write(" ");
             end
             $write("\n");
         end
     endtask
 
-    task print_golden_indices;
-        begin
-            $write("[TB] golden idx     = ");
-            for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", golden[i]);
-                if (i != 7) $write(", ");
-            end
-            $write("\n");
-        end
-    endtask
-
-    task print_result_values;
-        begin
-            $write("[TB] DUT values     = ");
-            for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", value[result[i]]);
-                if (i != 7) $write(", ");
-            end
-            $write("\n");
-        end
-    endtask
-
-    task print_golden_values;
-        begin
-            $write("[TB] golden values  = ");
-            for (i = 0; i < 8; i = i + 1) begin
-                $write("%0d", value[golden[i]]);
-                if (i != 7) $write(", ");
-            end
-            $write("\n");
-        end
-    endtask
-
-    // ----------------------------
-    // Build cmp matrix from values
-    // cmp[a][b] = 1 means value[a] <= value[b]
-    // tie-break by index to make ordering deterministic
-    // ----------------------------
+    // ============================================================
+    // PART 1: generic full-sort test
+    // ============================================================
     task build_cmp_from_values;
         begin
             for (i = 0; i < 8; i = i + 1) begin
@@ -124,31 +109,21 @@ module tb_BitonicSortingNetwork;
                     else if (value[i] > value[j])
                         cmp[i][j] = 1'b0;
                     else
-                        cmp[i][j] = (i <= j); // stable tie-break
+                        cmp[i][j] = (i <= j); // deterministic tie-break
                 end
             end
         end
     endtask
 
-    // ----------------------------
-    // Build golden sorted index order
-    // ascending by value, tie-break by index
-    // ----------------------------
-    task build_golden;
+    task build_golden_full;
         integer tmp;
         begin
-            for (i = 0; i < 8; i = i + 1)
-                golden[i] = i;
+            for (i = 0; i < 8; i = i + 1) golden[i] = i;
 
             for (i = 0; i < 8; i = i + 1) begin
                 for (j = i + 1; j < 8; j = j + 1) begin
-                    if (value[golden[j]] < value[golden[i]]) begin
-                        tmp       = golden[i];
-                        golden[i] = golden[j];
-                        golden[j] = tmp;
-                    end
-                    else if (value[golden[j]] == value[golden[i]] &&
-                             golden[j] < golden[i]) begin
+                    if (value[golden[j]] < value[golden[i]] ||
+                       ((value[golden[j]] == value[golden[i]]) && (golden[j] < golden[i]))) begin
                         tmp       = golden[i];
                         golden[i] = golden[j];
                         golden[j] = tmp;
@@ -158,56 +133,7 @@ module tb_BitonicSortingNetwork;
         end
     endtask
 
-    // ----------------------------
-    // Reset
-    // ----------------------------
-    task do_reset;
-        begin
-            rst_n = 1'b0;
-            start = 1'b0;
-            for (i = 0; i < 8; i = i + 1)
-                cmp[i] = '0;
-
-            repeat (2) @(negedge clk);
-            rst_n = 1'b1;
-            repeat (1) @(negedge clk);
-        end
-    endtask
-
-    // ----------------------------
-    // Start pulse: one cycle
-    // ----------------------------
-    task start_once;
-        begin
-            @(negedge clk);
-            start = 1'b1;
-            @(negedge clk);
-            start = 1'b0;
-        end
-    endtask
-
-    // ----------------------------
-    // Wait until DUT returns idle
-    // ----------------------------
-    task wait_done;
-        integer cycle_count;
-        begin
-            cycle_count = 0;
-            while ((done !== 1'b1) || (busy !== 1'b0)) begin
-                @(posedge clk);
-                cycle_count = cycle_count + 1;
-                if (cycle_count > 20) begin
-                    $display("[TB] ERROR: timeout waiting for done");
-                    $finish;
-                end
-            end
-        end
-    endtask
-
-    // ----------------------------
-    // Compare DUT result with golden
-    // ----------------------------
-    task check_result;
+    task check_full_sort;
         integer mismatch;
         begin
             mismatch = 0;
@@ -219,53 +145,211 @@ module tb_BitonicSortingNetwork;
             total_tests = total_tests + 1;
 
             if (mismatch) begin
-                $display("[TB] FAIL");
-                print_values();
-                print_result_indices();
-                print_golden_indices();
-                print_result_values();
-                print_golden_values();
-                $display("");
-            end
-            else begin
+                $display("[TB][FULL] FAIL");
+                $write("  values      = ");
+                for (i = 0; i < 8; i = i + 1) begin
+                    $write("%0d", value[i]);
+                    if (i != 7) $write(" ");
+                end
+                $write("\n");
+
+                print_result();
+
+                $write("  golden idx  = ");
+                for (i = 0; i < 8; i = i + 1) begin
+                    $write("%0d", golden[i]);
+                    if (i != 7) $write(" ");
+                end
+                $write("\n\n");
+            end else begin
                 pass_tests = pass_tests + 1;
-                $display("[TB] PASS");
-                print_values();
-                print_result_indices();
-                print_result_values();
-                $display("");
+                $display("[TB][FULL] PASS");
             end
         end
     endtask
 
-    // ----------------------------
-    // One test wrapper
-    // ----------------------------
-    task run_case(
+    task run_full_case(
         input integer v0, input integer v1, input integer v2, input integer v3,
         input integer v4, input integer v5, input integer v6, input integer v7
     );
         begin
-            value[0] = v0; value[1] = v1; value[2] = v2; value[3] = v3;
-            value[4] = v4; value[5] = v5; value[6] = v6; value[7] = v7;
+            value[0]=v0; value[1]=v1; value[2]=v2; value[3]=v3;
+            value[4]=v4; value[5]=v5; value[6]=v6; value[7]=v7;
 
             build_cmp_from_values();
-            build_golden();
-            start_once();
+            build_golden_full();
+            pulse_start();
             wait_done();
-            check_result();
+            check_full_sort();
+        end
+    endtask
+
+    // ============================================================
+    // PART 2: geofence-style test
+    //
+    // Only 0..5 are real vertices.
+    // 6 and 7 are dummy lanes and MUST NOT appear in result[0:5].
+    //
+    // cmp meaning:
+    //   cmp[a][b] = 1 means "a should come before b"
+    //
+    // We model 0..5 by angular rank.
+    // Smaller rank means earlier in sorted order.
+    //
+    // We intentionally force dummies 6,7 to be the largest two.
+    // If sorter is valid for geofence, final result[0:5] must be exactly
+    // the 6 real vertex indices in order, and result[6:7] must be 6,7.
+    // ============================================================
+    task build_golden6;
+        integer tmp;
+        begin
+            for (i = 0; i < 6; i = i + 1) golden6[i] = i;
+
+            for (i = 0; i < 6; i = i + 1) begin
+                for (j = i + 1; j < 6; j = j + 1) begin
+                    if (rank6[golden6[j]] < rank6[golden6[i]] ||
+                       ((rank6[golden6[j]] == rank6[golden6[i]]) && (golden6[j] < golden6[i]))) begin
+                        tmp         = golden6[i];
+                        golden6[i]  = golden6[j];
+                        golden6[j]  = tmp;
+                    end
+                end
+            end
+        end
+    endtask
+
+    task build_cmp_geofence;
+        begin
+            // clear all
+            for (i = 0; i < 8; i = i + 1)
+                for (j = 0; j < 8; j = j + 1)
+                    cmp[i][j] = 1'b0;
+
+            // real vertices 0..5 ordered by rank6
+            for (i = 0; i < 6; i = i + 1) begin
+                for (j = 0; j < 6; j = j + 1) begin
+                    if (rank6[i] < rank6[j])
+                        cmp[i][j] = 1'b1;
+                    else if (rank6[i] > rank6[j])
+                        cmp[i][j] = 1'b0;
+                    else
+                        cmp[i][j] = (i <= j);
+                end
+            end
+
+            // Make all real vertices come before dummies 6,7
+            for (i = 0; i < 6; i = i + 1) begin
+                cmp[i][6] = 1'b1;
+                cmp[i][7] = 1'b1;
+                cmp[6][i] = 1'b0;
+                cmp[7][i] = 1'b0;
+            end
+
+            // dummy ordering: 6 before 7
+            cmp[6][6] = 1'b1;
+            cmp[6][7] = 1'b1;
+            cmp[7][6] = 1'b0;
+            cmp[7][7] = 1'b1;
+        end
+    endtask
+
+    task check_geofence_sort;
+        integer mismatch;
+        integer seen [7:0];
+        begin
+            mismatch = 0;
+
+            for (i = 0; i < 8; i = i + 1) seen[i] = 0;
+
+            // first 6 outputs must be exactly the real vertices in expected order
+            for (i = 0; i < 6; i = i + 1) begin
+                if (result[i] > 3'd5)
+                    mismatch = 1;
+                if (result[i] !== golden6[i][2:0])
+                    mismatch = 1;
+                seen[result[i]] = seen[result[i]] + 1;
+            end
+
+            // last two must be dummies 6 and 7 in order
+            if (result[6] !== 3'd6) mismatch = 1;
+            if (result[7] !== 3'd7) mismatch = 1;
+
+            // uniqueness check for 0..5
+            for (i = 0; i < 6; i = i + 1) begin
+                if (seen[i] != 1)
+                    mismatch = 1;
+            end
+
+            total_tests = total_tests + 1;
+
+            if (mismatch) begin
+                $display("[TB][GEOFENCE] FAIL");
+                $write("  rank6       = ");
+                for (i = 0; i < 6; i = i + 1) begin
+                    $write("%0d", rank6[i]);
+                    if (i != 5) $write(" ");
+                end
+                $write("\n");
+
+                $write("  golden6 idx = ");
+                for (i = 0; i < 6; i = i + 1) begin
+                    $write("%0d", golden6[i]);
+                    if (i != 5) $write(" ");
+                end
+                $write("\n");
+
+                print_result();
+                $display("  ERROR: dummy index leaked into front half or ordering is wrong.\n");
+            end else begin
+                pass_tests = pass_tests + 1;
+                $display("[TB][GEOFENCE] PASS");
+            end
+        end
+    endtask
+
+    task run_geofence_case(
+        input integer r0, input integer r1, input integer r2,
+        input integer r3, input integer r4, input integer r5
+    );
+        begin
+            rank6[0]=r0; rank6[1]=r1; rank6[2]=r2;
+            rank6[3]=r3; rank6[4]=r4; rank6[5]=r5;
+
+            build_golden6();
+            build_cmp_geofence();
+            pulse_start();
+            wait_done();
+            check_geofence_sort();
+        end
+    endtask
+
+    task run_geofence_random;
+        integer perm [5:0];
+        integer tmp;
+        integer a, b;
+        begin
+            // generate random permutation 0..5
+            for (a = 0; a < 6; a = a + 1) perm[a] = a;
+            for (a = 5; a > 0; a = a - 1) begin
+                b = $urandom_range(0, a);
+                tmp     = perm[a];
+                perm[a] = perm[b];
+                perm[b] = tmp;
+            end
+
+            run_geofence_case(perm[0], perm[1], perm[2], perm[3], perm[4], perm[5]);
         end
     endtask
 
     // ----------------------------
-    // Optional monitor
+    // optional cycle monitor
     // ----------------------------
     initial begin
-        $display("time   rst_n start busy done | result");
+        $display("time  rst_n start busy done | result");
         forever begin
             @(posedge clk);
-            $write("%4t   %0b     %0b    %0b    %0b  | ",
-                   $time, rst_n, start, busy, done);
+            $write("%4t   %0b    %0b    %0b    %0b | ",
+                $time, rst_n, start, busy, done);
             for (i = 0; i < 8; i = i + 1) begin
                 $write("%0d", result[i]);
                 if (i != 7) $write(" ");
@@ -275,7 +359,7 @@ module tb_BitonicSortingNetwork;
     end
 
     // ----------------------------
-    // Main stimulus
+    // main
     // ----------------------------
     initial begin
         total_tests = 0;
@@ -283,27 +367,29 @@ module tb_BitonicSortingNetwork;
 
         do_reset();
 
-        $display("\n[TB] Directed tests start\n");
+        $display("\n========== FULL-SORT SANITY TESTS ==========\n");
+        run_full_case(13, 2, 99, 7, 45, 1, 88, 20);
+        run_full_case(8, 7, 6, 5, 4, 3, 2, 1);
+        run_full_case(1, 2, 3, 4, 5, 6, 7, 8);
+        run_full_case(10, 10, 3, 3, 50, 50, 1, 1);
+        run_full_case(5, 5, 5, 5, 5, 5, 5, 5);
+        run_full_case(42, 0, 17, 17, 99, 3, 42, 1);
 
-        // distinct values
-        run_case(13, 2, 99, 7, 45, 1, 88, 20);
+        $display("\n========== GEOFENCE-SPECIFIC TESTS ==========\n");
 
-        // descending
-        run_case(8, 7, 6, 5, 4, 3, 2, 1);
+        // Directed permutations
+        run_geofence_case(0,1,2,3,4,5);
+        run_geofence_case(5,4,3,2,1,0);
+        run_geofence_case(2,5,0,4,1,3);
+        run_geofence_case(3,0,5,1,4,2);
+        run_geofence_case(1,4,2,5,0,3);
+        run_geofence_case(4,2,5,0,3,1);
 
-        // ascending
-        run_case(1, 2, 3, 4, 5, 6, 7, 8);
+        // Random permutations
+        for (t = 0; t < 100; t = t + 1)
+            run_geofence_random();
 
-        // duplicates
-        run_case(10, 10, 3, 3, 50, 50, 1, 1);
-
-        // all equal
-        run_case(5, 5, 5, 5, 5, 5, 5, 5);
-
-        // mixed
-        run_case(42, 0, 17, 17, 99, 3, 42, 1);
-
-        $display("[TB] Summary: %0d / %0d passed", pass_tests, total_tests);
+        $display("\n[TB] SUMMARY: %0d / %0d passed", pass_tests, total_tests);
 
         if (pass_tests == total_tests)
             $display("[TB] ALL TESTS PASSED");

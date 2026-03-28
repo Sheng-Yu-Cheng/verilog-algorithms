@@ -91,7 +91,7 @@ module BitonicSortingNetwork (
     // ------------------------------ Output Logic ------------------------------
     always @(*) begin
         busy = (state != S_IDLE);
-        done = (state == S_IDLE);
+        done = (state != S_IDLE && next_state == S_IDLE);
         do_reset     = 0;
         do_bi1       = 0;
         do_bi2       = 0;
