@@ -8,6 +8,7 @@ module BitonicSortingNetwork (
     input  [7:0] cmp [7:0], 
     output reg [2:0] result [7:0]
 );
+    // start must be a one cycle pulse 
     typedef enum logic [2:0] {
         S_IDLE, 
         S_BI1, 
@@ -26,10 +27,10 @@ module BitonicSortingNetwork (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_IDLE; 
-            for (i = 0; i < 8; i++) result[i] = i;
+            for (i = 0; i < 8; i++) result[i] <= i[2:0];
         end else begin
             if (do_reset) begin
-                for (i = 0; i < 8; i++) result[i] = i;            
+                for (i = 0; i < 8; i++) result[i] <= i[2:0];            
             end
             if (do_bi1) begin
                 {result[1], result[0]} <= (cmp[result[1]] > cmp[result[0]]) ? {result[1], result[0]} : {result[0], result[1]};
