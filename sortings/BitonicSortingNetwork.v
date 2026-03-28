@@ -6,7 +6,7 @@ module BitonicSortingNetwork (
     output reg done, 
 
     input reg [7:0]cmp[7:0], 
-    output reg [2:0]result[7:0];
+    output reg [2:0]result[7:0]
 );
     typedef enum logic [2:0] {
         S_IDLE, 
