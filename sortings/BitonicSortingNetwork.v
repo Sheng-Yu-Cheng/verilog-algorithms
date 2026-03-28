@@ -16,7 +16,8 @@ module BitonicSortingNetwork (
         S_BI2_MG2, 
         S_BI4, 
         S_BI4_MG4, 
-        S_BI4_MG2
+        S_BI4_MG2, 
+        S_BI8
     } state_t;
     state_t state, next_state;
     reg do_bi1; reg do_bi2; reg do_bi4; reg do_reset;
@@ -83,7 +84,8 @@ module BitonicSortingNetwork (
             S_BI2_MG2   : next_state = S_BI4;
             S_BI4       : next_state = S_BI4_MG4;
             S_BI4_MG4   : next_state = S_BI4_MG2;
-            S_BI4_MG2   : next_state = S_IDLE;
+            S_BI4_MG2   : next_state = S_BI8;
+            S_BI8       : next_state = S_IDLE;
         endcase
     end
 
