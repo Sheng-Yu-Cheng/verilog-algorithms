@@ -19,8 +19,8 @@ module BitonicSortingNetwork (
         S_BI8
     } state_t;
     state_t state, next_state;
-    wire do_bi1; wire do_bi2; wire do_bi4; wire do_bi8;
-    wire do_bi2_mg2; wire do_bi4_mg4; wire do_bi4_mg2;
+    reg do_bi1; reg do_bi2; reg do_bi4; reg do_bi8;
+    reg do_bi2_mg2; reg do_bi4_mg4; reg do_bi4_mg2;
 
     // ----------------------------- State Register -----------------------------
     integer i;
