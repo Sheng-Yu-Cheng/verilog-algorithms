@@ -1,5 +1,10 @@
 `timescale 1ns/1ps
 
+/*
+run this test bench with command
+vcs -R -full64 -sverilog BitonicSortingNetwork-testbench.sv BitonicSortingNetwork.v +access+r +vcs+fsdbon
+*/
+
 module tb_BitonicSortingNetwork;
 
     logic clk;
@@ -154,3 +159,4 @@ module tb_BitonicSortingNetwork;
     end
 
 endmodule
+
