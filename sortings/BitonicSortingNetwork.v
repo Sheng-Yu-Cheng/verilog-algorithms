@@ -2,11 +2,11 @@ module BitonicSortingNetwork (
     input wire clk, 
     input wire rst_n, 
     input wire start, 
-    output reg busy, 
-    output reg done, 
+    output busy, 
+    output done, 
 
-    input reg [7:0]cmp[7:0], 
-    output reg [2:0]result[7:0]
+    input  [7:0] cmp [7:0], 
+    output [2:0] result [7:0]
 );
     typedef enum logic [2:0] {
         S_IDLE, 
