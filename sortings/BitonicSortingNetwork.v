@@ -5,7 +5,7 @@ module BitonicSortingNetwork (
     output reg busy, 
     output reg done, 
 
-    input  [7:0] cmp [7:0], 
+    input  [7:0] cmp [7:0], // cmp[i][j] := a[i] <= a[j]
     output reg [2:0] result [7:0]
 );
     // start must be a one cycle pulse 
@@ -32,41 +32,41 @@ module BitonicSortingNetwork (
             if (do_reset) begin
                 for (i = 0; i < 8; i++) result[i] <= i[2:0];            
             end
-            if (do_bi1) begin
-                {result[1], result[0]} <= (cmp[result[1]] > cmp[result[0]]) ? {result[1], result[0]} : {result[0], result[1]};
-                {result[3], result[2]} <= (cmp[result[3]] < cmp[result[2]]) ? {result[3], result[2]} : {result[2], result[3]};
-                {result[5], result[4]} <= (cmp[result[5]] > cmp[result[4]]) ? {result[5], result[4]} : {result[4], result[5]};
-                {result[7], result[6]} <= (cmp[result[7]] < cmp[result[6]]) ? {result[7], result[6]} : {result[6], result[7]};
+            if (do_bi1) begin 
+                {result[1], result[0]} <= (cmp[result[0]][result[1]]) ? {result[1], result[0]} : {result[0], result[1]};
+                {result[3], result[2]} <= (cmp[result[3]][result[2]]) ? {result[3], result[2]} : {result[2], result[3]};
+                {result[5], result[4]} <= (cmp[result[4]][result[5]]) ? {result[5], result[4]} : {result[4], result[5]};
+                {result[7], result[6]} <= (cmp[result[7]][result[6]]) ? {result[7], result[6]} : {result[6], result[7]};
             end
             if (do_bi2) begin
-                {result[2], result[0]} <= (cmp[result[2]] > cmp[result[0]]) ? {result[2], result[0]} : {result[0], result[2]};
-                {result[3], result[1]} <= (cmp[result[3]] > cmp[result[1]]) ? {result[3], result[1]} : {result[1], result[3]};
-                {result[6], result[4]} <= (cmp[result[6]] < cmp[result[4]]) ? {result[6], result[4]} : {result[4], result[6]};
-                {result[7], result[5]} <= (cmp[result[7]] < cmp[result[5]]) ? {result[7], result[5]} : {result[5], result[7]};
+                {result[2], result[0]} <= (cmp[result[0]][result[2]]) ? {result[2], result[0]} : {result[0], result[2]};
+                {result[3], result[1]} <= (cmp[result[1]][result[3]]) ? {result[3], result[1]} : {result[1], result[3]};
+                {result[6], result[4]} <= (cmp[result[6]][result[4]]) ? {result[6], result[4]} : {result[4], result[6]};
+                {result[7], result[5]} <= (cmp[result[7]][result[5]]) ? {result[7], result[5]} : {result[5], result[7]};
             end 
             if (do_bi2_mg2) begin
-                {result[1], result[0]} <= (cmp[result[1]] > cmp[result[0]]) ? {result[1], result[0]} : {result[0], result[1]};
-                {result[3], result[2]} <= (cmp[result[3]] > cmp[result[2]]) ? {result[3], result[2]} : {result[2], result[3]};
-                {result[5], result[4]} <= (cmp[result[5]] < cmp[result[4]]) ? {result[5], result[4]} : {result[4], result[5]};
-                {result[7], result[6]} <= (cmp[result[7]] < cmp[result[6]]) ? {result[7], result[6]} : {result[6], result[7]};
+                {result[1], result[0]} <= (cmp[result[0]][result[1]]) ? {result[1], result[0]} : {result[0], result[1]};
+                {result[3], result[2]} <= (cmp[result[2]][result[3]]) ? {result[3], result[2]} : {result[2], result[3]};
+                {result[5], result[4]} <= (cmp[result[5]][result[4]]) ? {result[5], result[4]} : {result[4], result[5]};
+                {result[7], result[6]} <= (cmp[result[7]][result[6]]) ? {result[7], result[6]} : {result[6], result[7]};
             end
             if (do_bi4) begin
-                {result[4], result[0]} <= (cmp[result[4]] > cmp[result[0]]) ? {result[4], result[0]} : {result[0], result[4]};
-                {result[5], result[1]} <= (cmp[result[5]] > cmp[result[1]]) ? {result[5], result[1]} : {result[1], result[5]};
-                {result[6], result[2]} <= (cmp[result[6]] > cmp[result[2]]) ? {result[6], result[2]} : {result[2], result[6]};
-                {result[7], result[3]} <= (cmp[result[7]] > cmp[result[3]]) ? {result[7], result[3]} : {result[3], result[7]};
+                {result[4], result[0]} <= (cmp[result[0]][result[4]]) ? {result[4], result[0]} : {result[0], result[4]};
+                {result[5], result[1]} <= (cmp[result[1]][result[5]]) ? {result[5], result[1]} : {result[1], result[5]};
+                {result[6], result[2]} <= (cmp[result[2]][result[6]]) ? {result[6], result[2]} : {result[2], result[6]};
+                {result[7], result[3]} <= (cmp[result[3]][result[7]]) ? {result[7], result[3]} : {result[3], result[7]};
             end 
             if (do_bi4_mg4) begin
-                {result[2], result[0]} <= (cmp[result[2]] > cmp[result[0]]) ? {result[2], result[0]} : {result[0], result[2]};
-                {result[3], result[1]} <= (cmp[result[3]] > cmp[result[1]]) ? {result[3], result[1]} : {result[1], result[3]};
-                {result[6], result[4]} <= (cmp[result[6]] > cmp[result[4]]) ? {result[6], result[4]} : {result[4], result[6]};
-                {result[7], result[5]} <= (cmp[result[7]] > cmp[result[5]]) ? {result[7], result[5]} : {result[5], result[7]};
+                {result[2], result[0]} <= (cmp[result[0]][result[2]]) ? {result[2], result[0]} : {result[0], result[2]};
+                {result[3], result[1]} <= (cmp[result[1]][result[3]]) ? {result[3], result[1]} : {result[1], result[3]};
+                {result[6], result[4]} <= (cmp[result[4]][result[6]]) ? {result[6], result[4]} : {result[4], result[6]};
+                {result[7], result[5]} <= (cmp[result[5]][result[7]]) ? {result[7], result[5]} : {result[5], result[7]};
             end 
             if (do_bi4_mg2) begin
-                {result[1], result[0]} <= (cmp[result[1]] > cmp[result[0]]) ? {result[1], result[0]} : {result[0], result[1]};
-                {result[3], result[2]} <= (cmp[result[3]] > cmp[result[2]]) ? {result[3], result[2]} : {result[2], result[3]};
-                {result[5], result[4]} <= (cmp[result[5]] > cmp[result[4]]) ? {result[5], result[4]} : {result[4], result[5]};
-                {result[7], result[6]} <= (cmp[result[7]] > cmp[result[6]]) ? {result[7], result[6]} : {result[6], result[7]};
+                {result[1], result[0]} <= (cmp[result[0]][result[1]]) ? {result[1], result[0]} : {result[0], result[1]};
+                {result[3], result[2]} <= (cmp[result[2]][result[3]]) ? {result[3], result[2]} : {result[2], result[3]};
+                {result[5], result[4]} <= (cmp[result[4]][result[5]]) ? {result[5], result[4]} : {result[4], result[5]};
+                {result[7], result[6]} <= (cmp[result[6]][result[7]]) ? {result[7], result[6]} : {result[6], result[7]};
             end
             state <= next_state;
         end
