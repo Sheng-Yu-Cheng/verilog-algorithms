@@ -1,5 +1,10 @@
 `timescale 1ns/1ps
 
+/*
+Run:
+vcs -R -full64 -sverilog SquareRoot-testbench.sv SquareRoot.v +access+r +vcs+fsdbon
+*/
+
 module tb_SquareRoot;
 
     // =========================
@@ -46,23 +51,23 @@ module tb_SquareRoot;
     function [OUT_WIDTH-1:0] isqrt;
         input [WIDTH-1:0] x;
         reg   [WIDTH-1:0] r;
-        reg   [WIDTH-1:0] bit;
+        reg   [WIDTH-1:0] bit_;
         begin
             r = 0;
-            bit = 1 << (WIDTH-2); // largest even power
+            bit_ = 1 << (WIDTH-2); // largest even power
 
-            // 找到 <= x 的最高 bit
-            while (bit > x)
-                bit = bit >> 2;
+            // 找到 <= x 的最高 bit_
+            while (bit_ > x)
+                bit_ = bit_ >> 2;
 
-            while (bit != 0) begin
-                if (x >= r + bit) begin
-                    x = x - (r + bit);
-                    r = (r >> 1) + bit;
+            while (bit_ != 0) begin
+                if (x >= r + bit_) begin
+                    x = x - (r + bit_);
+                    r = (r >> 1) + bit_;
                 end else begin
                     r = r >> 1;
                 end
-                bit = bit >> 2;
+                bit_ = bit_ >> 2;
             end
 
             isqrt = r[OUT_WIDTH-1:0];
