@@ -29,8 +29,8 @@ module SquareRoot #(
             done <= 0; root <= 0; busy <= 0;
         end else begin
             if (start && !busy) begin
-                k <= OUT_WIDTH; remainder <= (OUT_WIDTH)'b0; radicand_r <= radicand;
-                done <= 0; root <= (OUT_WIDTH)'b0; busy <= 1;
+                k <= OUT_WIDTH; remainder <= {OUT_WIDTH{1'b0}}; radicand_r <= radicand;
+                done <= 0; root <= {OUT_WIDTH{1'b0}}; busy <= 1;
             end else if (k > 0) begin
                 if (remainder_candidate_sub[OUT_WIDTH + 2]) begin
                     root <= {root[OUT_WIDTH - 2 : 0], 1'b0};
