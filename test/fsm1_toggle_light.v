@@ -4,7 +4,7 @@ module fsm1_toggle_light (
     input wire toggle, 
     output reg light
 );
-    parameter 
+    localparam  
         S_OFF = 1'b0, 
         S_ON  = 1'b1
     ;
@@ -21,20 +21,24 @@ module fsm1_toggle_light (
     end
 
     always @(*) begin
-        next_state <= state;
+        next_state = state;
         case (state)
-            S_ON: if (toggle) next_state <= S_OFF;
-            S_OFF: if (toggle) next_state <= S_ON;
+            S_ON: next_state = toggle ? S_OFF : state;
+            S_OFF: next_state = toggle ? S_ON : state;
+            default: next_state = S_OFF;
         endcase
     end
 
     always @(*) begin
         case (state)
             S_ON: begin
-                light <= 1;
+                light = 1;
             end
             S_OFF: begin
-                light <= 0;
+                light = 0;
+            end
+            default: begin
+                light = 0;
             end
         endcase
     end
