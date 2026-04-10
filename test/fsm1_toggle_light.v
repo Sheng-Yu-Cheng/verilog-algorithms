@@ -4,11 +4,12 @@ module fsm1_toggle_light (
     input wire toggle, 
     output reg light
 );
-    typedef enum {
-        S_ON, 
-        S_OFF
-    } state_t;
-    state_t state, next_state;
+    parameter 
+        S_OFF = 1'b0, 
+        S_ON  = 1'b1
+    ;
+
+    reg state, next_state;
 
 
     always @(posedge clk or negedge rst_n) begin
