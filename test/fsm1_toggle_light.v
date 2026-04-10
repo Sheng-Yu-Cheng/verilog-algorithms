@@ -23,8 +23,8 @@ module fsm1_toggle_light (
     always @(*) begin
         next_state <= state;
         case (state)
-            S_ON: if (toggle) state <= S_OFF;
-            S_OFF: if (toggle) state <= S_ON;
+            S_ON: if (toggle) next_state <= S_OFF;
+            S_OFF: if (toggle) next_state <= S_ON;
         endcase
     end
 
