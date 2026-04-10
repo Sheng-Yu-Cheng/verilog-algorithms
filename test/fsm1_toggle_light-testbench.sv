@@ -15,6 +15,11 @@ module tb_fsm1_toggle_light;
     );
 
     initial begin
+        $fsdbDumpfile("tb_fsm1_toggle_light.fsdb");
+        $fsdbDumpvars(0, tb_fsm1_toggle_light);
+    end
+
+    initial begin
         clk = 0;
         forever #5 clk = ~clk;
     end
