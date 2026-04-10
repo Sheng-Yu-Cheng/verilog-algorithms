@@ -14,7 +14,7 @@ module fsm1_toggle_light (
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state_t <= S_OFF;
+            state <= S_OFF;
         end else begin
             state <= next_state;
         end
